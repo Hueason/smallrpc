@@ -1,27 +1,35 @@
 package com.hueason.common;
 
-import io.netty.channel.ChannelHandler;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.ByteToMessageDecoder;
+
+import java.util.List;
 
 /**
  * Created by Administrator on 2017/5/5.
  */
-public class RpcDecoder implements ChannelHandler {
-    public RpcDecoder(Class<RpcRequest> rpcRequestClass) {
+public class RpcDecoder extends ByteToMessageDecoder {
+
+    private Class<?> genericClass;
+
+    public RpcDecoder(Class<?> genericClass) {
+        this.genericClass = genericClass;
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-
-    }
-
-    @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-
+    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+        if (in.readableBytes() < 4) {
+            return;
+        }
+        in.markReaderIndex();
+        int dataLength = in.readInt();
+        if (in.readableBytes() < dataLength) {
+            in.resetReaderIndex();
+            return;
+        }
+        byte[] data = new byte[dataLength];
+        in.readBytes(data);
+        out.add(SerializationUtils.deserialize(data, genericClass));
     }
 }

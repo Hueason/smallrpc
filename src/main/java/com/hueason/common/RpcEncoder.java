@@ -1,27 +1,26 @@
 package com.hueason.common;
 
-import io.netty.channel.ChannelHandler;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.MessageToByteEncoder;
 
 /**
  * Created by Administrator on 2017/5/5.
  */
-public class RpcEncoder implements ChannelHandler {
-    public RpcEncoder(Class<RpcResponse> rpcResponseClass) {
+public class RpcEncoder extends MessageToByteEncoder{
+
+    private Class<?> genericClass;
+
+    public RpcEncoder(Class<?> genericClass) {
+        this.genericClass = genericClass;
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-
-    }
-
-    @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-
+    protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf out) throws Exception {
+        if(genericClass.isInstance(msg)){
+            byte[] data = SerializationUtils.serialize(msg);
+            out.writeInt(data.length);
+            out.writeBytes(data);
+        }
     }
 }

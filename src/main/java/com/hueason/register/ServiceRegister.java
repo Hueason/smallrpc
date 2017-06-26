@@ -38,7 +38,4 @@ public class ServiceRegister {
         logger.debug("create address node : {}", addressNode);
     }
 
-
-    public void register(String serverAddress) {
-    }
 }
