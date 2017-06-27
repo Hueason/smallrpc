@@ -13,7 +13,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.commons.collections4.MapUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,12 +20,10 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.util.StringUtils;
 
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by Administrator on 2017/5/5.
@@ -39,8 +36,6 @@ public class RpcServer implements ApplicationContextAware,InitializingBean {
 
     private Map<String,Object> handlerMap = new ConcurrentHashMap<String, Object>();//存放接口和服务对象之间的映射关系
 
-    private static ThreadPoolExecutor executor;
-
     public RpcServer(String serverAddress){
         this.serverAddress = serverAddress;
     }
@@ -50,7 +45,7 @@ public class RpcServer implements ApplicationContextAware,InitializingBean {
         this.serviceRegister = serviceRegister;
     }
 
-
+    @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         //扫描所有带有RpcSrvice注解的类 并初始化
         Map<String,Object> serviceBeanmap = applicationContext.getBeansWithAnnotation(RpcService.class);
@@ -74,24 +69,25 @@ public class RpcServer implements ApplicationContextAware,InitializingBean {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) throws Exception {
-                            ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(65536,0,4,0,0))
-                                    .addLast(new RpcDecoder(RpcRequest.class))//将请求进行解码
+                            ch.pipeline().addLast(new RpcDecoder(RpcRequest.class))//将请求进行解码
                                     .addLast(new RpcEncoder(RpcResponse.class))//将响应进行编码
                                     .addLast(new RpcHandler(handlerMap));//处理请求
                         }
                     });
 
             //获取Rpc服务器的Ip地址和端口号
-            String[] array = serverAddress.split(":");
-            String host = array[0];
-            int port = Integer.valueOf(array[1]);
+            String[] strings = StringUtils.split(serverAddress,":");
+            String host = strings[0];
+            int port = Integer.valueOf(strings[1]);
 
 
             ChannelFuture f = b.bind(host,port).sync();
-            logger.info("Server started on port {}",port);
+            logger.debug("Server started on port {}",port);
 
             if(serviceRegister != null){
-                serviceRegister.register(serverAddress);//注册服务地址
+                for (String interfaceName:handlerMap.keySet()) {
+                    serviceRegister.register(interfaceName,serverAddress);//注册服务地址
+                }
             }
 
             f.channel().closeFuture().sync();
@@ -99,17 +95,6 @@ public class RpcServer implements ApplicationContextAware,InitializingBean {
             bossGroup.shutdownGracefully();
             wokerGroup.shutdownGracefully();
         }
-    }
-
-    public static void submit(Runnable task){
-        if(executor == null){
-            synchronized (RpcServer.class){
-                if(executor == null){
-                    executor = new ThreadPoolExecutor(16,16,600l, TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(65536));
-                }
-            }
-        }
-        executor.execute(task);
     }
 
 }
