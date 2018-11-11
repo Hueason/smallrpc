@@ -4,7 +4,7 @@ package com.hueason.common;
  * Created by Administrator on 2017/5/5.
  */
 public class RpcResponse {
-    private String requestId;
+    private String requestId;//request
     private Exception exception;
     private Object result;
 
