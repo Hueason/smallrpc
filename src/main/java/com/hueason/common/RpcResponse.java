@@ -5,7 +5,7 @@ package com.hueason.common;
  */
 public class RpcResponse {
     private String requestId;
-    private Exception exception;
+    private Exception exception;//exception
     private Object result;
 
     public String getRequestId() {
